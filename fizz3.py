@@ -37,19 +37,43 @@ def try_answer(question_url, answer):
         print_response(response)
         return response
 
-# keep trying answers until a correct one is given
-def get_correct_answer(question_url):
-    while True:
-        answer = input('Enter your answer:\n')
 
-        response = try_answer(question_url, answer)
+def generate_answer(question_data: dict):
+    rules = question_data.get('rules')
+    if not rules:
+        # this is the first question, answer "Python" for it
+        return 'Python'
+    else:
+        rule_numbers = [rule['number'] for rule in rules]
+        rule_map = {rule['number']: rule['response'] for rule in rules}
+        numbers = question_data.get('numbers', [])
+        answers = []
+        for number in numbers:
+            number = int(number)
+            answer = ''
+            rule_is_matched = False
+            for r in rule_numbers:
+                if number % r == 0:
+                    rule_is_matched = True
+                    answer += rule_map[r]
+            if not rule_is_matched:
+                answer = str(number)
+            answers.append(answer)
+        return ' '.join(answers)
+
+
+# keep trying answers until a correct one is given
+def get_correct_answer(question_data: dict, answer_url: str):
+    while True:
+        answer = generate_answer(question_data)
+
+        response = try_answer(answer_url, answer)
 
         if (response.get('result') == 'interview complete'):
             print('congratulations!')
             exit()
 
         if (response.get('result') == 'correct'):
-            input('press enter to continue')
             return response.get('nextQuestion')
 
 # do the next question
@@ -65,7 +89,7 @@ def do_question(domain, question_url):
     next_question = question_data.get('nextQuestion')
 
     if next_question: return next_question
-    return get_correct_answer(question_url)
+    return get_correct_answer(question_data, question_url)
 
 
 def main():
